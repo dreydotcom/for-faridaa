@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Live report</title>
+<style>
+  :root { --ink:#2c2331; --muted:#7a6d80; --paper:#FFF8FB; }
+  * { box-sizing: border-box; }
+  body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+         background: radial-gradient(1200px 600px at 20% -10%, #FFE7F1 0%, var(--paper) 55%, #F7F0FF 100%);
+         color: var(--ink); min-height:100vh; padding:26px 16px 60px; }
+  .wrap { max-width: 780px; margin: 0 auto; }
+  h1 { font-size: 23px; margin: 4px 0 2px; letter-spacing:-0.02em; }
+  .sub { color: var(--muted); font-size: 13px; display:flex; align-items:center; gap:8px; margin-bottom:20px; }
+  .dot { width:8px; height:8px; border-radius:50%; background:#5ac97f; box-shadow:0 0 0 4px rgba(90,201,127,.16); }
+  .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(148px,1fr)); gap:12px; }
+  .card { background:#fff; border:1px solid #F4E4EE; border-radius:16px; padding:14px 16px;
+          box-shadow: 0 8px 24px rgba(184,140,232,.10); }
+  .label { font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); }
+  .value { font-size:32px; font-weight:700; margin-top:4px; font-variant-numeric: tabular-nums; line-height:1.1; }
+  .hint { font-size:12px; color:var(--muted); margin-top:3px; }
+  .yes .value { color:#E0578A; } .no .value { color:#8a7fb0; }
+  .bar { display:flex; gap:10px; align-items:center; margin:18px 0 8px; flex-wrap:wrap; }
+  button { font:inherit; font-weight:600; border-radius:999px; border:1px solid #EEDCF0; background:#fff;
+           color:var(--ink); padding:10px 18px; cursor:pointer; }
+  button:hover { background:#FFF0F6; }
+  .status { font-size:13px; color:var(--muted); }
+  .funnel { background:#fff; border:1px solid #F4E4EE; border-radius:16px; padding:16px; margin-top:14px; }
+  .funnel h2 { font-size:13px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:0 0 12px; }
+  .row { display:grid; grid-template-columns: 150px 1fr 48px; gap:10px; align-items:center; margin:9px 0; font-size:13px; }
+  .track { height:9px; background:#F7EDF5; border-radius:999px; overflow:hidden; }
+  .fill { height:100%; border-radius:999px; background:linear-gradient(90deg,#FFA6C6,#C3A0F0); }
+  .num { text-align:right; font-variant-numeric: tabular-nums; color:var(--muted); }
+  .note { font-size:12px; color:var(--muted); margin-top:14px; line-height:1.55; }
+  code { background:#F7EFFB; padding:1px 6px; border-radius:6px; font-size:11px; }
+  .url { font-size:12px; color:var(--muted); margin-top:2px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Live report</h1>
+  <p class="sub"><span class="dot"></span><span id="updated">loading…</span></p>
+
+  <div class="grid">
+    <div class="card"><div class="label">Opened the page</div><div class="value" id="opened_page">–</div><div class="hint">times the link loaded</div></div>
+    <div class="card"><div class="label">Opened the envelope</div><div class="value" id="opened_envelope">–</div><div class="hint">tapped the seal</div></div>
+    <div class="card"><div class="label">Saw the question</div><div class="value" id="question_shown">–</div><div class="hint">pressed “ask me”</div></div>
+    <div class="card no"><div class="label">Pressed “No”</div><div class="value" id="answered_no">–</div><div class="hint">ragebait attempts</div></div>
+    <div class="card yes"><div class="label">Said YES</div><div class="value" id="answered_yes">–</div><div class="hint">🎉</div></div>
+  </div>
+
+  <div class="bar">
+    <button id="refresh">Refresh now</button>
+    <span class="status" id="status"></span>
+  </div>
+
+  <div class="funnel">
+    <h2>Journey</h2>
+    <div class="row"><span>Page opened</span><div class="track"><div class="fill" id="f_open"></div></div><span class="num" id="n_open">0</span></div>
+    <div class="row"><span>Envelope opened</span><div class="track"><div class="fill" id="f_env"></div></div><span class="num" id="n_env">0</span></div>
+    <div class="row"><span>Question shown</span><div class="track"><div class="fill" id="f_q"></div></div><span class="num" id="n_q">0</span></div>
+    <div class="row"><span>Answered</span><div class="track"><div class="fill" id="f_a"></div></div><span class="num" id="n_a">0</span></div>
+  </div>
+
+  <p class="note">
+    Auto-refreshes every 30 seconds. Counts are totals from a free public counter
+    (<code>abacus.jasoncameron.dev</code>); each visitor is counted once per event, so a refresh
+    doesn’t inflate them. Ad-blockers can drop a ping, so treat these as a strong signal rather than
+    an exact ledger.
+  </p>
+  <p class="url" id="siteurl"></p>
+</div>
+
+<script>
+  const NS = 'faridaa-live-2k9vd';
+  const BASE = 'https://abacus.jasoncameron.dev';
+  const KEYS = ['opened_page','opened_envelope','question_shown','answered_no','answered_yes'];
+  const SITE = 'https://for-faridaa-ykj1.vercel.app/';
+  document.getElementById('siteurl').textContent = 'Tracking: ' + SITE;
+
+  const num = (id) => document.getElementById(id);
+
+  async function load() {
+    const status = num('status');
+    status.textContent = 'checking…';
+    const data = {};
+    let failed = 0;
+    await Promise.all(KEYS.map(async (k) => {
+      try {
+        const r = await fetch(`${BASE}/get/${NS}/${k}?t=${Date.now()}`, { cache: 'no-store' });
+        const j = await r.json();
+        const v = (j && typeof j.value === 'number') ? j.value : 0;
+        data[k] = v;
+        num(k).textContent = v;
+      } catch {
+        num(k).textContent = '?';
+        failed++;
+      }
+    }));
+
+    const max = Math.max(data.opened_page || 0, 1);
+    const pct = (v) => Math.round(((v || 0) / max) * 100) + '%';
+    const open = data.opened_page || 0;
+    num('f_open').style.width = pct(open);
+    num('n_open').textContent = open;
+    num('f_env').style.width = pct(data.opened_envelope);
+    num('n_env').textContent = data.opened_envelope || 0;
+    num('f_q').style.width = pct(data.question_shown);
+    num('n_q').textContent = data.question_shown || 0;
+    const answered = (data.answered_yes || 0) + (data.answered_no || 0);
+    num('f_a').style.width = pct(answered);
+    num('n_a').textContent = answered;
+
+    num('updated').textContent = 'last checked ' + new Date().toLocaleTimeString();
+    status.textContent = failed ? failed + ' value(s) failed — tap Refresh' : '';
+  }
+
+  num('refresh').addEventListener('click', load);
+  load();
+  setInterval(load, 30000);
+</script>
+</body>
+</html>
